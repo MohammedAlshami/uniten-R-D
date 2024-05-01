@@ -9,7 +9,7 @@ import os
 import re
 import zipfile
 
-model = YOLO(r"C:\Users\USER\Desktop\Work\Uniten\Prototype\Backend\best.pt")
+model = YOLO(r"best.pt")
 app = Flask(__name__)
 
 # Example of enabling CORS for all routes but only for GET and POST methods
@@ -122,7 +122,7 @@ def handle_url():
 
     filename = os.path.basename(temp.name)
     
-    base_path = r"C:\Users\USER\Desktop\Work\Uniten\Prototype\runs\segment"
+    base_path = r"runs\segment"
     highest_folder = get_highest_numbered_folder(base_path)
     image_path = rf"{highest_folder}\{filename}"
     
