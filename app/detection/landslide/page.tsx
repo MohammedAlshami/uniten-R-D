@@ -61,7 +61,7 @@ const page = () => {
 
       // Now send the download URL to your API endpoint
       const apiResponse = await fetch(
-        "http://127.0.0.1:5000/endpoint",
+        "http://157.230.46.148:5000/endpoint",
         {
           method: "POST",
           headers: {
