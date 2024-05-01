@@ -130,3 +130,6 @@ def handle_url():
     
     output_url = upload_image(zip_path)
     return jsonify({"url": output_url}), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
