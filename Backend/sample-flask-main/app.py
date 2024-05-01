@@ -17,6 +17,56 @@ CORS(app)
 
 import pyrebase
 
+
+from ultralytics import YOLO
+from osgeo import gdal
+# Load a model
+import geopandas as gpd
+from shapely.geometry import Polygon
+from osgeo import gdal
+from fiona.crs import from_epsg
+
+def pixels_to_coordinates(tif_file_path, pixel_coords):
+    # Open the TIFF file
+    ds = gdal.Open(tif_file_path)
+    if ds is None:
+        print("Error: Could not open the TIFF file.")
+        return None
+    
+    # Get the geotransformation
+    geo_transform = ds.GetGeoTransform()
+    
+    # Define the transformation function
+    def transform(x_pixel, y_pixel):
+        # Apply transformation using float precision
+        x = geo_transform[0] + (x_pixel + 0.5) * geo_transform[1] + (y_pixel + 0.5) * geo_transform[2]
+        y = geo_transform[3] + (x_pixel + 0.5) * geo_transform[4] + (y_pixel + 0.5) * geo_transform[5]
+        return x, y
+    
+    # Convert pixel coordinates to geographic coordinates
+    geo_coords = [transform(x_pixel, y_pixel) for x_pixel, y_pixel in pixel_coords]
+    
+    # Close the TIFF file
+    ds = None
+    return geo_coords
+
+
+def polygons_to_shapefile(polygons, tif_file_path, output_shapefile_path):
+    # Load the TIFF to get spatial reference
+    ds = gdal.Open(tif_file_path)
+    if ds is None:
+        raise ValueError("Error: Could not open the TIFF file.")
+    crs = ds.GetProjection()  # Get the coordinate reference system from the TIFF
+    ds = None  # Close the dataset
+    
+    # Create a list of Polygon objects from the list of coordinates
+    polygon_shapes = [Polygon(poly) for poly in polygons]
+    
+    # Create a GeoDataFrame
+    gdf = gpd.GeoDataFrame(index=range(len(polygon_shapes)), crs=crs, geometry=polygon_shapes)
+    
+    # Save to a shapefile
+    gdf.to_file(output_shapefile_path, driver='ESRI Shapefile')
 # Firebase configuration
 firebaseConfig = {
     "apiKey": "AIzaSyBLv1DiRB6egmpaoIKfjODXZF5fYheQKIM",
@@ -93,43 +143,74 @@ def zip_files(paths):
 
     # Return the path to the temporary zip file
     return temp_file_path
+
+def landslide_detection(tif_file_path):
+    result = model.predict(tif_file_path, imgsz=1280, conf=0.2, iou=0.2,save=True, project="", name="test" )
+    result = result[0]
+    masks = result.masks.xy  # Masks object for segmentation masks outputs
+    
+    detected_polys = []
+    for poly in masks:
+        
+        
+        poly_list = poly.tolist()
+        coordinates = pixels_to_coordinates(tif_file_path, poly.tolist())
+        detected_polys.append(coordinates)
+    print(detected_polys)
+
+    output_shapefile_path =  "output_polygons.shp"
+    output_shapefile_path1 =  "output_polygons.cpg"
+    output_shapefile_path2 =  "output_polygons.dbf"
+    output_shapefile_path3 =  "output_polygons.shx"
+
+    polygons_to_shapefile(detected_polys, tif_file_path, output_shapefile_path)
+    
+    
+    filename = os.path.basename(tif_file_path)
+    
+    base_path = r"runs/segment"
+    highest_folder = get_highest_numbered_folder(base_path)
+    image_path = rf"{highest_folder}/{filename}"
+    new_path = rf"{highest_folder}/detection_image.png"
+    os.rename(image_path, new_path)
+
+    return [tif_file_path, new_path, output_shapefile_path, output_shapefile_path1, output_shapefile_path2, output_shapefile_path3]
 @app.route('/endpoint', methods=['POST'])
 def handle_url():
-    if not request.is_json:
-        return jsonify({"error": "Request must be JSON"}), 400
+    try:
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
 
-    data = request.get_json()
-    url = data.get('url')
-    if not url:
-        return jsonify({"error": "No URL provided"}), 400
+        data = request.get_json()
+        url = data.get('url')
+        if not url:
+            return jsonify({"error": "No URL provided"}), 400
 
-    # Parse the URL to get the path, unquote to decode any URL-encoded characters
-    path = urlparse(url).path
-    filename = os.path.basename(unquote(path))
-    _, ext = os.path.splitext(filename)  # Extract the extension
+        # Parse the URL to get the path, unquote to decode any URL-encoded characters
+        path = urlparse(url).path
+        filename = os.path.basename(unquote(path))
+        _, ext = os.path.splitext(filename)  # Extract the extension
 
-    # Create a temporary file with the extracted extension
-    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp:
-        # Download the content from the URL
-        response = requests.get(url)
-        response.raise_for_status()  # Ensure the request was successful
-        temp.write(response.content)
-        # The temp.name includes the file extension now
-   
-
-    results = model.predict( temp.name, save=True, imgsz=320, conf=0.1, project="", name="test")
-    print(results)
-
-    filename = os.path.basename(temp.name)
+        # Create a temporary file with the extracted extension
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp:
+            # Download the content from the URL
+            response = requests.get(url)
+            response.raise_for_status()  # Ensure the request was successful
+            temp.write(response.content)
+            # The temp.name includes the file extension now
     
-    base_path = r"runs\segment"
-    highest_folder = get_highest_numbered_folder(base_path)
-    image_path = rf"{highest_folder}\{filename}"
-    
-    zip_path = zip_files([image_path])
-    
-    output_url = upload_image(zip_path)
-    return jsonify({"url": output_url}), 200
+
+        results = landslide_detection(temp.name)
+        # print(results)
+
+        
+        zip_path = zip_files(results)
+        
+        output_url = upload_image(zip_path)
+        return jsonify({"url": output_url}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+

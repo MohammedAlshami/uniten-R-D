@@ -23,6 +23,8 @@ const page = () => {
   const fileInputRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const downloadRef = useRef(null);
+  const [showModalerror, setshowModalerror] = useState(false);
+
 
   
   const toggleModal = () => {
@@ -85,11 +87,16 @@ const page = () => {
 
       
     } catch (error) {
+      setShowModal(false);
+      setshowModalerror(true);
       console.error("Upload failed:", error.message);
     }
    
   };
 
+    const handleErrorClick = () => {
+      setshowModalerror(false);
+    };
   // Create a ref for the file input element
   // const fileInputRef = useRef();
 
@@ -148,6 +155,27 @@ const page = () => {
   return (
     <>
       <div className="overflow-hidden">
+      <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="fixed top-0 m-12 w-full flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 transition-colors duration-200 bg-white border rounded-lg gap-x-2 sm:w-auto dark:hover:bg-gray-800 dark:bg-gray-900 hover:bg-gray-100 dark:text-gray-200 dark:border-gray-700"
+        >
+          <svg
+            className="w-5 h-5 rtl:rotate-180"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18"
+            />
+          </svg>
+          <span>Go back</span>
+        </button>
         <div className="max-w-[85rem]  py-20">
           <div className="relative mx-auto max-w-4xl grid space-y-5 sm:space-y-0">
             <div className="text-center">
@@ -167,6 +195,20 @@ const page = () => {
                 </div>
               </div>
             )}
+             {showModalerror && (
+              <div
+                className="fixed top-0 left-0 z-50 w-screen h-screen flex items-center justify-center"
+                style={{ background: "rgba(0, 0, 0, 0.3)" }}
+              >
+                <div className="bg-white border py-12 px-5 rounded-lg flex items-center flex-col">
+                  <div className="text-red-500 text-lg font-medium mt-2 text-center">
+                    Sorry, we couldn't find any features to detect. Try again with another image.
+                  </div>
+                  <button onClick={handleErrorClick} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">Close</button>
+                </div>
+              </div>
+            )}
+
 
             <div className="m-auto w-screen md:w-[100vh] ">
               <div className=" py-10  lg:py-14 mx-auto mx-12">
