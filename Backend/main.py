@@ -12,6 +12,8 @@ import zipfile
 model = YOLO(r"best.pt")
 model.to("cuda")
 app = Flask(__name__)
+app.config['SESSION_COOKIE_SECURE'] = True
+
 
 # Example of enabling CORS for all routes but only for GET and POST methods
 CORS(app)

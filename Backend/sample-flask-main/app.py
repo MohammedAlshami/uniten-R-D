@@ -8,6 +8,8 @@ from urllib.parse import urlparse, unquote
 import os
 import re
 import zipfile
+from gevent import pywsgi
+
 
 model = YOLO(r"best.pt")
 app = Flask(__name__)
@@ -212,5 +214,8 @@ def handle_url():
         return jsonify({"error": str(e)}), 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, ssl_context=('cert.pem', 'key.pem'))
 
+if __name__ == '__main__':
+ http_server = pywsgi.WSGIServer(('0.0.0.0', 5000), app, keyfile='server.key', certfile='server.crt')
+ http_server.serve_forever()

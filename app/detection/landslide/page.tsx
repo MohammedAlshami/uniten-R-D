@@ -61,7 +61,7 @@ const page = () => {
 
       // Now send the download URL to your API endpoint
       const apiResponse = await fetch(
-        "http://157.230.46.148:5000/endpoint",
+        "https://hackaten.com/endpoint",
         {
           method: "POST",
           headers: {
@@ -88,7 +88,7 @@ const page = () => {
       
     } catch (error) {
       setShowModal(false);
-      setshowModalerror(true);
+      setshowModalerror(false);
       console.error("Upload failed:", error.message);
     }
    
